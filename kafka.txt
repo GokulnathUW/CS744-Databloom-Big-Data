@@ -1,0 +1,67 @@
+
+
+
+export PROJECT_ID=proverbial-will-455821-j9
+export SUBNET_PATH=projects/proverbial-will-455821-j9/regions/us-central1/subnetworks/default
+export CLUSTER_ID=kafka-stream
+
+
+BOOTSTRAP_SERVICE='bootstrap.kafka-stream.us-central1.managedkafka.proverbial-will-455821-j9.cloud.goog'
+
+
+
+gcloud compute instances create producer \
+    --scopes=https://www.googleapis.com/auth/cloud-platform \
+    --subnet=$SUBNET_PATH \
+    --zone=us-central1-f
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:316345455682-compute@developer.gserviceaccount.com" \
+    --role=roles/managedkafka.client
+
+
+ gcloud compute ssh producer --project=$PROJECT_ID --zone=us-central1-f
+
+
+ export BOOTSTRAP=bootstrap.$CLUSTER_ID.us-central1.managedkafka.$PROJECT_ID.cloud.goog:9092
+
+
+ gcloud auth application-default login
+
+
+
+Finally,
+ gcloud managed-kafka clusters delete $CLUSTER_ID --location=us-central1
+
+
+
+
+
+
+gcloud compute instances create consumer \
+    --scopes=https://www.googleapis.com/auth/cloud-platform \
+    --subnet=$SUBNET_PATH \
+    --zone=us-central1-f
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:316345455682-compute@developer.gserviceaccount.com" \
+    --role=roles/managedkafka.client
+
+
+ gcloud compute ssh consumer --project=$PROJECT_ID --zone=us-central1-f
+
+
+
+ 
+gcloud managed-kafka topics describe ridestream \
+    --cluster=$CLUSTER_ID --location=us-central1
+
+
+
+
+spark-submit   --jars jars/gcs-connector-hadoop3-2.2.5-shaded.jar   --conf "spark.hadoop.fs.gs.impl=com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"   --conf "spark.hadoop.fs.gs.auth.service.account.enable=true"   --conf "spark.hadoop.fs.gs.auth.service.account.json.keyfile=/home/Patron/.config/gcloud/application_default_credentials.json"   producer.py   --input='gs://cs744-databloom/data/pq/green/2016/10/'   --service=green
+
+
+spark-submit   --jars jars/gcs-connector-hadoop3-2.2.5-shaded.jar   --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2 --conf "spark.hadoop.fs.gs.impl=com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"   --conf "spark.hadoop.fs.gs.auth.service.account.enable=true"   --conf "spark.hadoop.fs.gs.auth.service.account.json.keyfile=/home/Patron/.config/gcloud/application_default_credentials.json"   consumer.py
+
+spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2  --conf "spark.hadoop.fs.gs.auth.service.account.json.keyfile=/home/Patron/.config/gcloud/application_default_credentials.json" consumer.py
